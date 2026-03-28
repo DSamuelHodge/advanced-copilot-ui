@@ -1,0 +1,5 @@
+{
+  "name": "Advanced Copilot UI",
+  "description": "A high-fidelity, dark-mode AI copilot interface featuring code previews, model selection, and prompt building tools.",
+  "requestFramePermissions": []
+}
