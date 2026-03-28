@@ -4,12 +4,21 @@ import { useChatStore, useUIStore } from '../stores';
 import { GeminiModel, Message } from '../lib/types';
 import { streamMessageToGemini } from '../services/geminiService';
 
+interface AttachedFile {
+  name: string;
+  size: number;
+  type: string;
+  content?: string;
+}
+
 const InputArea: React.FC = () => {
   const [input, setInput] = useState('');
   const [isModelOpen, setIsModelOpen] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { 
     selectedModel, 
@@ -23,6 +32,57 @@ const InputArea: React.FC = () => {
   } = useChatStore();
 
   const { toggleTemplatesModal } = useUIStore();
+
+  useEffect(() => {
+    const handleUseTemplate = (event: Event) => {
+      const customEvent = event as CustomEvent<string>;
+      setInput(customEvent.detail);
+      setTimeout(() => textareaRef.current?.focus(), 100);
+    };
+
+    window.addEventListener('use-template', handleUseTemplate);
+    return () => window.removeEventListener('use-template', handleUseTemplate);
+  }, []);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files;
+    if (!fileList) return;
+    
+    const processedFiles: AttachedFile[] = [];
+
+    for (let i = 0; i < fileList.length; i++) {
+      const file = fileList[i];
+      if (file.size > 5 * 1024 * 1024) {
+        alert(`File ${file.name} is too large. Maximum size is 5MB.`);
+        continue;
+      }
+
+      const processedFile: AttachedFile = {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+      };
+
+      if (file.type.startsWith('text/') || file.name.endsWith('.tsx') || file.name.endsWith('.ts') || file.name.endsWith('.js') || file.name.endsWith('.jsx')) {
+        processedFile.content = await file.text();
+      }
+
+      processedFiles.push(processedFile);
+    }
+
+    setAttachedFiles(prev => [...prev, ...processedFiles]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAttachClick = () => {
+    fileInputRef.current?.click();
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -210,8 +270,25 @@ const InputArea: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-1">
-                <button className="p-2 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors" title="Attach file">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  multiple
+                  accept=".tsx,.ts,.js,.jsx,.txt,.md,.json"
+                />
+                <button 
+                  onClick={handleAttachClick}
+                  className="p-2 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors relative" 
+                  title="Attach file"
+                >
                     <Icons.Paperclip size={18} strokeWidth={1.5} />
+                    {attachedFiles.length > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 text-white text-xs rounded-full flex items-center justify-center">
+                        {attachedFiles.length}
+                      </span>
+                    )}
                 </button>
                 
                 <div className="w-px h-6 bg-border mx-1"></div>
@@ -229,6 +306,26 @@ const InputArea: React.FC = () => {
                 </button>
             </div>
         </div>
+
+        {attachedFiles.length > 0 && (
+          <div className="px-4 pb-2 flex flex-wrap gap-2">
+            {attachedFiles.map((file, index) => (
+              <div
+                key={`${file.name}-${index}`}
+                className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 rounded-lg text-xs"
+              >
+                <Icons.Paperclip size={12} className="text-zinc-400" />
+                <span className="text-zinc-300 max-w-[120px] truncate">{file.name}</span>
+                <button
+                  onClick={() => removeFile(index)}
+                  className="text-zinc-500 hover:text-red-400 transition-colors"
+                >
+                  <Icons.ChevronDown size={12} className="rotate-90" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       <div className="flex justify-center mt-2 gap-4 text-[10px] text-zinc-600 font-medium">
          <span>AI can make mistakes. Please check important info.</span>

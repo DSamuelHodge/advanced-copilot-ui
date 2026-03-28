@@ -5,6 +5,7 @@ import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import ChatArea from '../components/ChatArea';
 import InputArea from '../components/InputArea';
+import TemplatesModal from '../components/TemplatesModal';
 
 export default function ChatPage() {
   const { chatId } = useParams<{ chatId?: string }>();
@@ -38,6 +39,9 @@ export default function ChatPage() {
           </div>
         </main>
       </div>
+
+      {/* Modals */}
+      <TemplatesModal />
     </div>
   );
 }
