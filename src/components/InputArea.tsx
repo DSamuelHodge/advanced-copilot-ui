@@ -1,21 +1,28 @@
 import React, { useState, useRef, useEffect } from 'react';
 import * as Icons from './Icons';
-import { GeminiModel } from '../types';
+import { useChatStore, useUIStore } from '../stores';
+import { GeminiModel, Message, ArtifactData } from '../lib/types';
+import { streamMessageToGemini } from '../services/geminiService';
 
-interface InputAreaProps {
-  onSend: (message: string) => void;
-  isLoading: boolean;
-  selectedModel: GeminiModel;
-  onModelChange: (model: GeminiModel) => void;
-}
-
-const InputArea: React.FC<InputAreaProps> = ({ onSend, isLoading, selectedModel, onModelChange }) => {
+const InputArea: React.FC = () => {
   const [input, setInput] = useState('');
-  const [mode, setMode] = useState<'default' | 'edits'>('default');
   const [isModelOpen, setIsModelOpen] = useState(false);
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
+
+  const { 
+    selectedModel, 
+    setSelectedModel, 
+    isLoading, 
+    setLoading, 
+    getCurrentChat, 
+    addMessage, 
+    updateMessage,
+    createChat
+  } = useChatStore();
+
+  const { toggleTemplatesModal } = useUIStore();
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -24,18 +31,81 @@ const InputArea: React.FC<InputAreaProps> = ({ onSend, isLoading, selectedModel,
     }
   };
 
-  const handleSend = () => {
+  const extractCode = (text: string): string | null => {
+    const match = text.match(/```(?:tsx|jsx|javascript|typescript|react)\n([\s\S]*?)(?:```|$)/);
+    return match ? match[1] : null;
+  };
+
+  const handleSend = async () => {
     if (input.trim() && !isLoading) {
-      onSend(input);
+      const text = input;
       setInput('');
-      // Reset height
+      
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
+      }
+
+      const currentChat = getCurrentChat();
+      if (!currentChat) {
+        createChat();
+      }
+
+      const chatId = getCurrentChat()?.id || '';
+      
+      const userMsg: Message = {
+        id: crypto.randomUUID(),
+        role: 'user',
+        content: text,
+        timestamp: new Date().toISOString()
+      };
+
+      const modelMsgId = crypto.randomUUID();
+      const initialModelMsg: Message = {
+        id: modelMsgId,
+        role: 'model',
+        content: '',
+        timestamp: new Date().toISOString(),
+        modelName: selectedModel
+      };
+
+      addMessage(chatId, userMsg);
+      addMessage(chatId, initialModelMsg);
+      setLoading(true);
+
+      const history = getCurrentChat()?.messages.slice(0, -1).map(m => ({
+        role: m.role,
+        parts: [{ text: m.content }]
+      })) || [];
+
+      try {
+        let fullContent = '';
+        const stream = streamMessageToGemini(text, selectedModel, history);
+
+        for await (const chunk of stream) {
+          fullContent += chunk;
+          
+          const extractedCode = fullContent ? extractCode(fullContent) : null;
+          
+          updateMessage(chatId, modelMsgId, {
+            content: fullContent,
+            artifact: extractedCode ? {
+              title: 'Generated Component',
+              type: 'preview' as const,
+              content: extractedCode
+            } : undefined
+          });
+        }
+      } catch (error) {
+        console.error("Streaming error:", error);
+        updateMessage(chatId, modelMsgId, {
+          content: 'Sorry, I encountered an error connecting to the AI service.'
+        });
+      } finally {
+        setLoading(false);
       }
     }
   };
 
-  // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -43,7 +113,6 @@ const InputArea: React.FC<InputAreaProps> = ({ onSend, isLoading, selectedModel,
     }
   }, [input]);
 
-  // Click outside listener for model dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (modelDropdownRef.current && !modelDropdownRef.current.contains(event.target as Node)) {
@@ -57,8 +126,6 @@ const InputArea: React.FC<InputAreaProps> = ({ onSend, isLoading, selectedModel,
   return (
     <div className="w-full max-w-4xl mx-auto px-4 pb-6">
       <div className="relative bg-surface rounded-2xl border border-border shadow-lg transition-all focus-within:ring-1 focus-within:ring-zinc-700">
-        
-        {/* Text Area */}
         <div className="p-4 pb-2">
             <textarea
                 ref={textareaRef}
@@ -72,35 +139,16 @@ const InputArea: React.FC<InputAreaProps> = ({ onSend, isLoading, selectedModel,
             />
         </div>
 
-        {/* Toolbar */}
         <div className="flex items-center justify-between px-3 pb-3 pt-2">
-            
-            {/* Left Controls: Mode, Prompt Builder, Model */}
             <div className="flex items-center gap-2 flex-wrap">
-                {/* Mode Toggle */}
-                <div className="flex bg-black/40 rounded-lg p-0.5 border border-border">
-                    <button 
-                        onClick={() => setMode('default')}
-                        className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${mode === 'default' ? 'bg-zinc-700 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-300'}`}
-                    >
-                        Default
-                    </button>
-                    <button 
-                        onClick={() => setMode('edits')}
-                        className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${mode === 'edits' ? 'bg-zinc-700 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-300'}`}
-                    >
-                        Edits
-                    </button>
-                </div>
-
-                <div className="w-px h-4 bg-border mx-1"></div>
-
-                <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors text-xs font-medium">
+                <button 
+                    onClick={toggleTemplatesModal}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors text-xs font-medium"
+                >
                     <Icons.Sparkles size={14} />
-                    Prompt Builder
+                    Templates
                 </button>
 
-                {/* Model Selector in Input Toolbar */}
                 <div className="relative" ref={modelDropdownRef}>
                     <button 
                         onClick={() => setIsModelOpen(!isModelOpen)}
@@ -121,7 +169,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSend, isLoading, selectedModel,
                             
                             <button 
                                 onClick={() => {
-                                    onModelChange(GeminiModel.PRO);
+                                    setSelectedModel(GeminiModel.PRO);
                                     setIsModelOpen(false);
                                 }}
                                 className={`flex items-start gap-3 px-3 py-2.5 rounded-lg transition-colors text-left group ${selectedModel === GeminiModel.PRO ? 'bg-surface' : 'hover:bg-surface/50'}`}
@@ -140,7 +188,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSend, isLoading, selectedModel,
 
                             <button 
                                 onClick={() => {
-                                    onModelChange(GeminiModel.FLASH);
+                                    setSelectedModel(GeminiModel.FLASH);
                                     setIsModelOpen(false);
                                 }}
                                 className={`flex items-start gap-3 px-3 py-2.5 rounded-lg transition-colors text-left group ${selectedModel === GeminiModel.FLASH ? 'bg-surface' : 'hover:bg-surface/50'}`}
@@ -161,16 +209,9 @@ const InputArea: React.FC<InputAreaProps> = ({ onSend, isLoading, selectedModel,
                 </div>
             </div>
 
-            {/* Right Controls */}
             <div className="flex items-center gap-1">
-                <button className="p-2 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors" title="Mention">
-                    <Icons.AtSign size={18} strokeWidth={1.5} />
-                </button>
                 <button className="p-2 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors" title="Attach file">
                     <Icons.Paperclip size={18} strokeWidth={1.5} />
-                </button>
-                <button className="p-2 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors" title="Templates">
-                    <Icons.LayoutGrid size={18} strokeWidth={1.5} />
                 </button>
                 
                 <div className="w-px h-6 bg-border mx-1"></div>
