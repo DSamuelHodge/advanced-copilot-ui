@@ -74,15 +74,21 @@ export const useChatStore = create<ChatStore>()(
 
       addMessage: (chatId: string, message: Message) => {
         set((state) => ({
-          chats: state.chats.map((chat) =>
-            chat.id === chatId
-              ? {
-                  ...chat,
-                  messages: [...chat.messages, message],
-                  updatedAt: new Date().toISOString(),
-                }
-              : chat
-          ),
+          chats: state.chats.map((chat) => {
+            if (chat.id !== chatId) return chat;
+            
+            const shouldUpdateTitle = chat.title === 'New Chat' && message.role === 'user';
+            const newTitle = shouldUpdateTitle 
+              ? message.content.slice(0, 50) + (message.content.length > 50 ? '...' : '')
+              : chat.title;
+            
+            return {
+              ...chat,
+              title: newTitle,
+              messages: [...chat.messages, message],
+              updatedAt: new Date().toISOString(),
+            };
+          }),
         }));
       },
 
