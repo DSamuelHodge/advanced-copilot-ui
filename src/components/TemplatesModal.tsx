@@ -62,6 +62,10 @@ export default function TemplatesModal() {
       <div 
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={() => setTemplatesModalOpen(false)}
+        onKeyDown={(e) => e.key === 'Escape' && setTemplatesModalOpen(false)}
+        role="button"
+        tabIndex={-1}
+        aria-label="Close modal"
       />
       <div className="relative bg-surface border border-border rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">

@@ -6,6 +6,7 @@ import Header from '../components/Header';
 import ChatArea from '../components/ChatArea';
 import InputArea from '../components/InputArea';
 import TemplatesModal from '../components/TemplatesModal';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 export default function ChatPage() {
   const { chatId } = useParams<{ chatId?: string }>();
@@ -26,16 +27,22 @@ export default function ChatPage() {
     <div className="flex h-screen bg-background text-primary overflow-hidden font-sans selection:bg-zinc-700 selection:text-white">
       {/* Sidebar */}
       <div className={`${isSidebarOpen ? 'w-72' : 'w-0'} flex-shrink-0 transition-all duration-300`}>
-        <Sidebar />
+        <ErrorBoundary>
+          <Sidebar />
+        </ErrorBoundary>
       </div>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         <Header />
         <main className="flex-1 overflow-hidden relative flex flex-col">
-          <ChatArea />
+          <ErrorBoundary>
+            <ChatArea />
+          </ErrorBoundary>
           <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-[#09090b] via-[#09090b] to-transparent pt-10 z-20">
-            <InputArea />
+            <ErrorBoundary>
+              <InputArea />
+            </ErrorBoundary>
           </div>
         </main>
       </div>
