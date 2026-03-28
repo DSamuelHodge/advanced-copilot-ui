@@ -17,11 +17,6 @@ export default function ChatArea() {
     }
   }, [messages]);
 
-  const extractCode = (text: string): string | null => {
-    const match = text.match(/```(?:tsx|jsx|javascript|typescript|react)\n([\s\S]*?)(?:```|$)/);
-    return match ? match[1] : null;
-  };
-
   return (
     <div ref={scrollRef} className="flex-1 overflow-y-auto w-full">
       <div className="max-w-4xl mx-auto w-full px-4 pt-8 pb-32 space-y-8">
@@ -54,12 +49,12 @@ export default function ChatArea() {
                   {msg.content ? (
                     <ReactMarkdown 
                       components={{
-                        p: ({node, ...props}) => <p className="mb-3 last:mb-0" {...props} />,
-                        a: ({node, ...props}) => <a className="text-blue-400 hover:underline" {...props} />,
-                        ul: ({node, ...props}) => <ul className="list-disc pl-4 mb-3 space-y-1" {...props} />,
-                        ol: ({node, ...props}) => <ol className="list-decimal pl-4 mb-3 space-y-1" {...props} />,
-                        li: ({node, ...props}) => <li className="mb-1" {...props} />,
-                        code: ({node, className, children, ...props}) => {
+                        p: ({node: _node, ...props}) => <p className="mb-3 last:mb-0" {...props} />,
+                        a: ({node: _node, ...props}) => <a className="text-blue-400 hover:underline" {...props} />,
+                        ul: ({node: _node, ...props}) => <ul className="list-disc pl-4 mb-3 space-y-1" {...props} />,
+                        ol: ({node: _node, ...props}) => <ol className="list-decimal pl-4 mb-3 space-y-1" {...props} />,
+                        li: ({node: _node, ...props}) => <li className="mb-1" {...props} />,
+                        code: ({node: _node, className, children, ...props}) => {
                           const match = /language-(\w+)/.exec(className || '');
                           const isInline = !match && !String(children).includes('\n');
                           
@@ -97,7 +92,7 @@ export default function ChatArea() {
             ) : (
               <div className="bg-zinc-800/50 px-4 py-2.5 rounded-2xl rounded-tr-sm text-base text-zinc-200 max-w-[80%]">
                 <ReactMarkdown components={{
-                  p: ({node, ...props}) => <p className="mb-0" {...props} />
+                  p: ({node: _node, ...props}) => <p className="mb-0" {...props} />
                 }}>{msg.content}</ReactMarkdown>
               </div>
             )}

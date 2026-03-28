@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import * as Icons from './Icons';
 import { useChatStore, useUIStore } from '../stores';
-import { GeminiModel, Message, ArtifactData } from '../lib/types';
+import { GeminiModel, Message } from '../lib/types';
 import { streamMessageToGemini } from '../services/geminiService';
 
 const InputArea: React.FC = () => {

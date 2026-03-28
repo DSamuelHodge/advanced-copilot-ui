@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import * as Icons from './Icons';
-import { ArtifactData } from '../types';
+import { ArtifactData } from '../lib/types';
 
 interface ArtifactViewProps {
   data: ArtifactData;
@@ -149,32 +149,7 @@ const ArtifactView: React.FC<ArtifactViewProps> = ({ data }) => {
     }
   };
 
-  // Syntax Highlighter (Simple regex-based for display)
-  const highlightLine = (line: string) => {
-     let encoded = line
-         .replace(/&/g, "&amp;")
-         .replace(/</g, "&lt;")
-         .replace(/>/g, "&gt;");
 
-     const commentIdx = encoded.indexOf('//');
-     let commentHtml = '';
-     if (commentIdx !== -1) {
-         commentHtml = `<span class="text-zinc-500 italic">${encoded.substring(commentIdx)}</span>`;
-         encoded = encoded.substring(0, commentIdx);
-     }
-     if (encoded.trim().startsWith('{/*')) {
-        return `<span class="text-zinc-500 italic">${encoded}</span>`;
-     }
-     encoded = encoded.replace(/(['"])(.*?)\1/g, '<span class="text-emerald-400">$1$2$1</span>');
-     const keywords = /\b(import|from|export|default|function|return|const|let|var|if|else|switch|case|break|interface|type)\b/g;
-     encoded = encoded.replace(keywords, '<span class="text-purple-400">$1</span>');
-     encoded = encoded.replace(/\b([A-Z][a-zA-Z0-9]+)\b/g, '<span class="text-yellow-200">$1</span>');
-     encoded = encoded.replace(/&lt;(\/?)(\w+)/g, '&lt;$1<span class="text-blue-400">$2</span>');
-     encoded = encoded.replace(/\b([a-zA-Z-]+)=/g, '<span class="text-sky-300">$1</span>=');
-     encoded = encoded.replace(/([{}])/g, '<span class="text-yellow-500">$1</span>');
-
-     return encoded + commentHtml;
-  };
 
   // Calculate container classes based on full screen mode
   const containerClasses = isFullScreen 
@@ -199,16 +174,20 @@ const ArtifactView: React.FC<ArtifactViewProps> = ({ data }) => {
           <div className="flex gap-1.5 group">
             {/* Fake Traffic Lights - Now Interactive */}
             <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50 group-hover:bg-red-500 transition-colors cursor-pointer" title="Close"></div>
-            <div 
-                className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50 group-hover:bg-yellow-500 transition-colors cursor-pointer" 
+            <button 
+                className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50 group-hover:bg-yellow-500 transition-colors cursor-pointer"
                 onClick={toggleCollapse}
+                onKeyDown={(e) => e.key === 'Enter' && toggleCollapse()}
                 title={isCollapsed ? "Expand" : "Collapse"}
-            ></div>
-            <div 
-                className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/50 group-hover:bg-green-500 transition-colors cursor-pointer" 
+                aria-label={isCollapsed ? "Expand" : "Collapse"}
+            />
+            <button 
+                className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/50 group-hover:bg-green-500 transition-colors cursor-pointer"
                 onClick={toggleFullScreen}
+                onKeyDown={(e) => e.key === 'Enter' && toggleFullScreen()}
                 title="Toggle Full Screen"
-            ></div>
+                aria-label="Toggle Full Screen"
+            />
           </div>
           <span className="text-xs text-zinc-400 font-medium font-mono">landing-page.tsx</span>
           
@@ -425,11 +404,11 @@ const ArtifactView: React.FC<ArtifactViewProps> = ({ data }) => {
                   ) : (
                       <div className="min-w-full inline-block font-mono text-[13px] leading-6 py-4 text-left">
                           {code.split('\n').map((line, i) => (
-                              <div key={i} className="flex hover:bg-white/5 group/line px-4">
+                              <div key={line + i} className="flex hover:bg-white/5 group/line px-4">
                                   <div className="w-8 text-right pr-4 select-none text-zinc-600 text-[11px] opacity-50 group-hover/line:opacity-100 group-hover/line:text-zinc-400 font-mono">
                                       {i + 1}
                                   </div>
-                                  <div className="flex-1 pl-0 text-zinc-300 whitespace-pre break-all" dangerouslySetInnerHTML={{ __html: highlightLine(line) || ' ' }} />
+                                  <pre className="flex-1 pl-0 text-zinc-300 whitespace-pre break-all">{line || ' '}</pre>
                               </div>
                           ))}
                       </div>
@@ -445,6 +424,8 @@ const ArtifactView: React.FC<ArtifactViewProps> = ({ data }) => {
         <div 
             className="w-full h-2 bg-surface hover:bg-zinc-700 cursor-ns-resize flex items-center justify-center transition-colors border-t border-border"
             onMouseDown={handleMouseDown}
+            role="separator"
+            aria-orientation="horizontal"
         >
             <div className="w-12 h-1 rounded-full bg-zinc-600/50"></div>
         </div>

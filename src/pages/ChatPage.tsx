@@ -7,9 +7,7 @@ import InputArea from '../components/InputArea';
 
 export default function ChatPage() {
   const { chatId } = useParams<{ chatId?: string }>();
-  const { chats, setCurrentChat, createChat, getCurrentChat } = useChatStore();
-  
-  const currentChat = getCurrentChat();
+  const { chats, setCurrentChat, createChat } = useChatStore();
 
   useEffect(() => {
     if (chatId) {
