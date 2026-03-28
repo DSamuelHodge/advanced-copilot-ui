@@ -32,7 +32,8 @@ import {
   ChevronUp,
   Folder,
   Search,
-  ArrowUpDown
+  ArrowUpDown,
+  Plus
 } from 'lucide-react';
 
 export {
@@ -40,5 +41,5 @@ export {
   Sparkles, Paperclip, LayoutGrid, ArrowUp, Bot, User, Trash2, Check,
   Zap, ChevronDown, Globe, Settings, PenTool, Save, Download,
   History, Clock, RotateCcw, Maximize2, Minimize2, AtSign, ChevronUp,
-  Folder, Search, ArrowUpDown
+  Folder, Search, ArrowUpDown, Plus
 };
